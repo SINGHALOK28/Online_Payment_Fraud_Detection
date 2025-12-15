@@ -1,6 +1,13 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
+import time
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # Page configuration
 st.set_page_config(
@@ -173,6 +180,232 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Load or train models with efficiency comparison
+@st.cache_resource
+def load_models():
+    try:
+        # Try to load real data
+        data = pd.read_csv("onlinefraud.csv")
+        
+        # Encode transaction types
+        type_mapping = {
+            'CASH_IN': 1,
+            'CASH_OUT': 2,
+            'DEBIT': 3,
+            'PAYMENT': 4,
+            'TRANSFER': 5
+        }
+        
+        data['type'] = data['type'].map(type_mapping)
+        
+        # Prepare features and target
+        X = data[['type', 'amount', 'oldbalanceOrg', 'newbalanceOrig']].fillna(0)
+        y = data['isFraud']
+        
+        # Scale features
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+        
+        # Train models
+        models = {}
+        metrics = {}
+        
+        # Model 1: Decision Tree
+        start = time.time()
+        dt_model = DecisionTreeClassifier(random_state=42, max_depth=15)
+        dt_model.fit(X_scaled, y)
+        dt_time = time.time() - start
+        dt_pred = dt_model.predict(X_scaled)
+        models['Decision Tree'] = dt_model
+        metrics['Decision Tree'] = {
+            'accuracy': accuracy_score(y, dt_pred),
+            'precision': precision_score(y, dt_pred, zero_division=0),
+            'recall': recall_score(y, dt_pred, zero_division=0),
+            'f1': f1_score(y, dt_pred, zero_division=0),
+            'train_time': dt_time
+        }
+        
+        # Model 2: Random Forest
+        start = time.time()
+        rf_model = RandomForestClassifier(n_estimators=50, max_depth=15, random_state=42, n_jobs=-1)
+        rf_model.fit(X_scaled, y)
+        rf_time = time.time() - start
+        rf_pred = rf_model.predict(X_scaled)
+        models['Random Forest'] = rf_model
+        metrics['Random Forest'] = {
+            'accuracy': accuracy_score(y, rf_pred),
+            'precision': precision_score(y, rf_pred, zero_division=0),
+            'recall': recall_score(y, rf_pred, zero_division=0),
+            'f1': f1_score(y, rf_pred, zero_division=0),
+            'train_time': rf_time
+        }
+        
+        # Model 3: Logistic Regression
+        start = time.time()
+        lr_model = LogisticRegression(max_iter=1000, random_state=42, n_jobs=-1)
+        lr_model.fit(X_scaled, y)
+        lr_time = time.time() - start
+        lr_pred = lr_model.predict(X_scaled)
+        models['Logistic Regression'] = lr_model
+        metrics['Logistic Regression'] = {
+            'accuracy': accuracy_score(y, lr_pred),
+            'precision': precision_score(y, lr_pred, zero_division=0),
+            'recall': recall_score(y, lr_pred, zero_division=0),
+            'f1': f1_score(y, lr_pred, zero_division=0),
+            'train_time': lr_time
+        }
+        
+        return models, scaler, metrics, 'real_data'
+    
+    except:
+        # Create synthetic training data based on fraud patterns
+        np.random.seed(42)
+        n_samples = 5000
+        
+        # Generate realistic features
+        types = np.random.randint(1, 6, n_samples)
+        amounts = np.random.exponential(5000, n_samples)
+        old_balance = np.random.exponential(10000, n_samples)
+        new_balance = old_balance - amounts
+        new_balance = np.maximum(new_balance, 0)
+        
+        X = np.column_stack([types, amounts, old_balance, new_balance])
+        
+        # Generate fraud labels based on patterns
+        y = []
+        for i in range(n_samples):
+            fraud_score = 0
+            
+            # Pattern 1: CASH_IN with decreased balance
+            if types[i] == 1 and new_balance[i] < old_balance[i]:
+                fraud_score += 0.5
+            
+            # Pattern 2: CASH_OUT/DEBIT amount exceeds original balance
+            if types[i] in [2, 3] and amounts[i] > old_balance[i]:
+                fraud_score += 0.6
+            
+            # Pattern 3: Mathematical inconsistency
+            expected_balance_out = old_balance[i] - amounts[i]
+            expected_balance_in = old_balance[i] + amounts[i]
+            
+            if types[i] in [2, 3, 4, 5]:
+                if abs(new_balance[i] - expected_balance_out) > amounts[i] * 0.05:
+                    fraud_score += 0.45
+            elif types[i] == 1:
+                if abs(new_balance[i] - expected_balance_in) > amounts[i] * 0.05:
+                    fraud_score += 0.45
+            
+            # Pattern 4: Zero new balance after payment
+            if new_balance[i] < 0.01 and types[i] == 4:
+                fraud_score += 0.4
+            
+            # Pattern 5: Very large amount vs balance
+            if amounts[i] > old_balance[i] * 0.9 and types[i] in [2, 5]:
+                fraud_score += 0.3
+            
+            # Pattern 6: CASH_OUT with suspicious amount
+            if types[i] == 2 and amounts[i] > 20000:
+                fraud_score += 0.2
+            
+            # Pattern 7: Transfer with unusual characteristics
+            if types[i] == 5 and amounts[i] > old_balance[i] * 0.8:
+                fraud_score += 0.15
+            
+            # Pattern 8: Negative balance
+            if new_balance[i] < 0:
+                fraud_score += 0.6
+            
+            y.append(1 if fraud_score > 0.4 else 0)
+        
+        y = np.array(y)
+        
+        # Scale features
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+        
+        # Train models
+        models = {}
+        metrics = {}
+        
+        # Model 1: Decision Tree
+        start = time.time()
+        dt_model = DecisionTreeClassifier(random_state=42, max_depth=15)
+        dt_model.fit(X_scaled, y)
+        dt_time = time.time() - start
+        dt_pred = dt_model.predict(X_scaled)
+        models['Decision Tree'] = dt_model
+        metrics['Decision Tree'] = {
+            'accuracy': accuracy_score(y, dt_pred),
+            'precision': precision_score(y, dt_pred, zero_division=0),
+            'recall': recall_score(y, dt_pred, zero_division=0),
+            'f1': f1_score(y, dt_pred, zero_division=0),
+            'train_time': dt_time
+        }
+        
+        # Model 2: Random Forest
+        start = time.time()
+        rf_model = RandomForestClassifier(n_estimators=50, max_depth=15, random_state=42, n_jobs=-1)
+        rf_model.fit(X_scaled, y)
+        rf_time = time.time() - start
+        rf_pred = rf_model.predict(X_scaled)
+        models['Random Forest'] = rf_model
+        metrics['Random Forest'] = {
+            'accuracy': accuracy_score(y, rf_pred),
+            'precision': precision_score(y, rf_pred, zero_division=0),
+            'recall': recall_score(y, rf_pred, zero_division=0),
+            'f1': f1_score(y, rf_pred, zero_division=0),
+            'train_time': rf_time
+        }
+        
+        # Model 3: Logistic Regression
+        start = time.time()
+        lr_model = LogisticRegression(max_iter=1000, random_state=42, n_jobs=-1)
+        lr_model.fit(X_scaled, y)
+        lr_time = time.time() - start
+        lr_pred = lr_model.predict(X_scaled)
+        models['Logistic Regression'] = lr_model
+        metrics['Logistic Regression'] = {
+            'accuracy': accuracy_score(y, lr_pred),
+            'precision': precision_score(y, lr_pred, zero_division=0),
+            'recall': recall_score(y, lr_pred, zero_division=0),
+            'f1': f1_score(y, lr_pred, zero_division=0),
+            'train_time': lr_time
+        }
+        
+        return models, scaler, metrics, 'synthetic_data'
+
+models, scaler, model_metrics, data_source = load_models()
+
+# Model selection sidebar
+st.sidebar.markdown("### ⚙️ Model Configuration")
+selected_model = st.sidebar.selectbox(
+    "Choose ML Model:",
+    options=list(models.keys()),
+    help="Select the machine learning model for fraud detection"
+)
+
+# Display model efficiency metrics
+with st.sidebar.expander("📊 Model Performance Metrics", expanded=True):
+    st.markdown(f"**Training Data:** {data_source.replace('_', ' ').title()}")
+    st.markdown("---")
+    
+    metrics_df = pd.DataFrame(model_metrics).T
+    metrics_df = metrics_df.round(4)
+    st.dataframe(metrics_df, use_container_width=True)
+    
+    # Show best model recommendation
+    best_f1 = metrics_df['f1'].idxmax()
+    best_speed = metrics_df['train_time'].idxmin()
+    best_accuracy = metrics_df['accuracy'].idxmax()
+    
+    st.markdown("---")
+    st.markdown(f"🏆 **Best F1 Score:** {best_f1}")
+    st.markdown(f"⚡ **Fastest:** {best_speed}")
+    st.markdown(f"🎯 **Best Accuracy:** {best_accuracy}")
+
+# Get selected model
+current_model = models[selected_model]
+
 # Main container
 col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -235,21 +468,25 @@ with col2:
         }
         
         try:
-            # Train model
-            np.random.seed(42)
-            n_samples = 1000
-            X_sample = np.random.rand(n_samples, 4) * 100000
-            y_sample = np.random.randint(0, 2, n_samples)
-            
-            model = DecisionTreeClassifier(random_state=42, max_depth=10)
-            model.fit(X_sample, y_sample)
-            
-            # Make prediction
+            # Prepare input
             type_encoded = type_mapping[transaction_type]
             input_features = np.array([[type_encoded, amount, old_balance, new_balance]])
             
-            prediction = model.predict(input_features)[0]
-            confidence = model.predict_proba(input_features)[0]
+            # Scale input using the same scaler
+            input_scaled = scaler.transform(input_features)
+            
+            # Make prediction
+            prediction = current_model.predict(input_scaled)[0]
+            
+            # Get confidence - handle both models that have predict_proba and those that don't
+            try:
+                confidence = current_model.predict_proba(input_scaled)[0]
+                fraud_confidence = confidence[1] * 100
+                safe_confidence = confidence[0] * 100
+            except:
+                # For models without predict_proba, use decision function
+                fraud_confidence = 50
+                safe_confidence = 50
             
             # Result Card
             if prediction == 1:
@@ -262,7 +499,7 @@ with col2:
                         <div class="confidence-value">{:.1f}%</div>
                     </div>
                 </div>
-                """.format(confidence[1] * 100), unsafe_allow_html=True)
+                """.format(fraud_confidence), unsafe_allow_html=True)
             else:
                 st.markdown("""
                 <div class="result-card safe-result">
@@ -273,11 +510,15 @@ with col2:
                         <div class="confidence-value">{:.1f}%</div>
                     </div>
                 </div>
-                """.format(confidence[0] * 100), unsafe_allow_html=True)
+                """.format(safe_confidence), unsafe_allow_html=True)
             
-            # Summary
+            # Summary with model info
             st.markdown("""
             <div class="summary-table">
+                <div class="summary-row">
+                    <span class="summary-label">🤖 Model Used</span>
+                    <span class="summary-value">{}</span>
+                </div>
                 <div class="summary-row">
                     <span class="summary-label">Transaction Type</span>
                     <span class="summary-value">{}</span>
@@ -300,6 +541,7 @@ with col2:
                 </div>
             </div>
             """.format(
+                selected_model,
                 transaction_type,
                 amount,
                 old_balance,
