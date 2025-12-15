@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+.ipynb_checkpoints/
+
+# Data files
+*.csv
+*.xlsx
+*.xls
+*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
