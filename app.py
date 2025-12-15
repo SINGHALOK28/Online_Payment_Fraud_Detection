@@ -429,7 +429,8 @@ with col2:
             "Amount (₹)",
             min_value=0.0,
             value=1000.0,
-            step=50.0
+            step=50.0,
+            key="amount_input"
         )
     
     col_c, col_d = st.columns(2)
@@ -439,18 +440,41 @@ with col2:
             "Original Balance (₹)",
             min_value=0.0,
             value=5000.0,
-            step=100.0
+            step=100.0,
+            key="old_balance_input"
         )
+    
+    # Auto-calculate new_balance based on transaction type
+    if transaction_type == "CASH_IN":
+        calculated_balance = old_balance + amount
+        help_text = "Auto-calculated: Original Balance + Amount"
+    elif transaction_type == "CASH_OUT":
+        calculated_balance = max(0, old_balance - amount)  # Prevent negative balance
+        help_text = "Auto-calculated: Original Balance - Amount"
+    elif transaction_type == "DEBIT":
+        calculated_balance = max(0, old_balance - amount)
+        help_text = "Auto-calculated: Original Balance - Amount"
+    elif transaction_type == "PAYMENT":
+        calculated_balance = max(0, old_balance - amount)
+        help_text = "Auto-calculated: Original Balance - Amount"
+    elif transaction_type == "TRANSFER":
+        calculated_balance = max(0, old_balance - amount)
+        help_text = "Auto-calculated: Original Balance - Amount"
     
     with col_d:
         new_balance = st.number_input(
             "New Balance (₹)",
             min_value=0.0,
-            value=4000.0,
-            step=100.0
+            value=calculated_balance,
+            step=100.0,
+            help=help_text,
+            key="new_balance_input"
         )
     
     st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Show calculation info
+    st.info(f"📌 **{transaction_type}**: {old_balance:,.0f} {'+ ' if transaction_type == 'CASH_IN' else '- '} {amount:,.0f} = **{calculated_balance:,.0f}** (Calculated)")
     
     # Predict Button
     st.markdown('<br>', unsafe_allow_html=True)
