@@ -446,19 +446,19 @@ with col2:
     
     # Auto-calculate new_balance based on transaction type
     if transaction_type == "CASH_IN":
-        calculated_balance = old_balance + amount
+        calculated_balance = float(old_balance + amount)
         help_text = "Auto-calculated: Original Balance + Amount"
     elif transaction_type == "CASH_OUT":
-        calculated_balance = max(0, old_balance - amount)  # Prevent negative balance
+        calculated_balance = float(max(0, old_balance - amount))
         help_text = "Auto-calculated: Original Balance - Amount"
     elif transaction_type == "DEBIT":
-        calculated_balance = max(0, old_balance - amount)
+        calculated_balance = float(max(0, old_balance - amount))
         help_text = "Auto-calculated: Original Balance - Amount"
     elif transaction_type == "PAYMENT":
-        calculated_balance = max(0, old_balance - amount)
+        calculated_balance = float(max(0, old_balance - amount))
         help_text = "Auto-calculated: Original Balance - Amount"
     elif transaction_type == "TRANSFER":
-        calculated_balance = max(0, old_balance - amount)
+        calculated_balance = float(max(0, old_balance - amount))
         help_text = "Auto-calculated: Original Balance - Amount"
     
     with col_d:
@@ -466,7 +466,7 @@ with col2:
             "New Balance (₹)",
             min_value=0.0,
             value=calculated_balance,
-            step=100.0,
+            step=1.0,
             help=help_text,
             key="new_balance_input"
         )
