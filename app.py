@@ -266,8 +266,14 @@ def load_models():
         types = np.random.randint(1, 6, n_samples)
         amounts = np.random.exponential(5000, n_samples)
         old_balance = np.random.exponential(10000, n_samples)
-        new_balance = old_balance - amounts
-        new_balance = np.maximum(new_balance, 0)
+        
+        # Calculate new_balance based on transaction type
+        new_balance = np.zeros(n_samples)
+        for i in range(n_samples):
+            if types[i] == 1:  # CASH_IN: balance increases
+                new_balance[i] = old_balance[i] + amounts[i]
+            else:  # CASH_OUT, DEBIT, PAYMENT, TRANSFER: balance decreases
+                new_balance[i] = max(0, old_balance[i] - amounts[i])
         
         X = np.column_stack([types, amounts, old_balance, new_balance])
         
